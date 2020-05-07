@@ -1,0 +1,645 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>D3 - Geo - USA States</title>
+    <!-- <script type="text/javascript" src="d3/d3.min.js"></script>  -->
+    <script src="https://d3js.org/d3.v4.min.js"></script>
+    <script src="https://unpkg.com/textures@1.2.0/dist/textures.js"></script>
+    <style>
+      body {
+        font-family: "Helvetica Neue", Helvetica, sans-serif;
+        font-size: 14px;
+        color: #333;
+      }
+
+      path {
+        fill: #ddd;
+        stroke: #aaa;
+      }
+
+      path:hover {
+        fill: orange;
+      }
+    </style>
+  </head>
+
+  <body>
+
+  <hr>
+
+    <script>
+    department = new Array();
+    department[0]=['size', 'value', 'orientation', 'color', 'shape', 'texture'];  // 資訊系
+    department[1]=['size', 'value', 'orientation', 'color', 'shape', 'texture'];  // 電機系
+
+    var fst
+    function renew(index){
+      fst = index
+      for(var i=0;i<department[index].length;i++)
+        document.myForm.member.options[i]=new Option(department[index][i], department[index][i]); // 設定新選項
+      document.myForm.member.length=department[index].length; // 刪除多餘的選項
+    }
+    </script>
+
+    <form name="myForm">
+    number
+    <select size=2 onChange="renew(this.selectedIndex);">
+      <option value="Area">Area
+      <option value="Population">Population
+    </select>
+
+    visual channels
+    <select name="member" size=6 onchange = 'Bar(fst, this.selectedIndex)'>
+    </select>
+    </form>
+
+    <svg id = 'map' width="3000" height="1000">
+    <svg id = 'bar' width="3000" height="1000" x = '1000' y = '50'>
+
+        <script type="text/javascript">
+
+            var firstTime = true;
+
+            function Bar(value, channels){
+              if (firstTime==false){
+                  d3.selectAll('g').remove();  
+              }
+              firstTime = false;
+
+              var temp;
+              var abbr;
+              var ar;
+              var to;
+              var width = 1500;
+              var height = 500; 
+              
+              var x = d3.scaleBand()
+              .rangeRound([0, width]);
+
+              var y = d3.scaleLinear()
+              .rangeRound([height, 0]);
+
+              var colour;
+
+              d3.csv("census.csv", type,  function(error, data){
+                abbr = data.map(function(d) {return d.State;});
+                ar = data.map(function(d) {return d.area;});
+                to = data.map(function(d) {return d.total;});
+
+                if (value =='0'){
+                  if (channels =='1'){
+                    var M = d3.max(data, function(d) { return d.area; });
+                    var m = d3.min(data, function(d) { return d.area; });
+
+                    var col = d3.scaleLinear()
+                      .domain([m, M])
+                      .range(["#FFE4E1", "#C71585"])
+                      .interpolate(d3.interpolateHcl);
+
+                    x.domain(data.map(function(d) { return d.State; }));
+                    y.domain([0, M]).nice();
+                  }
+                  
+                  //var xAxis = d3.axisLeft(xScale);
+                  // var xAxis = d3.axisTop(xScale);
+                  // var xAxis = d3.axisLeft(xScale);
+                  // var xAxis = d3.axisRight(xScale);
+
+                  else if (channels == '3'){
+                    var M = d3.max(data, function(d) { return d.area; });
+                    var m = d3.min(data, function(d) { return d.area; });
+
+                    var t1 = d3.schemeCategory20;
+                    var t2 = d3.schemeCategory20b;
+                    var t3 = d3.schemeCategory20c;
+                    var colorScale = t1.concat(t2);
+                    colorScale = colorScale.concat(t3);
+
+                    var col = d3.scaleOrdinal()
+                      .domain(abbr)
+                      .range(colorScale);
+
+                    x.domain(data.map(function(d) { return d.State; }));
+                    y.domain([0, M]).nice();
+                  }
+                  else{
+                    var M = d3.max(data, function(d) { return d.area; });
+                    var m = d3.min(data, function(d) { return d.area; });
+
+                    function fillArray(value, len) {
+                      var arr = [];
+                      for (var i = 0; i < len; i++) {
+                        arr.push(value);
+                      }
+                      return arr;
+                    }
+                    var colorScale = fillArray('  #00BFFF', 100);
+
+                    var col = d3.scaleOrdinal()
+                      .domain(abbr)
+                      .range(colorScale);
+
+                    x.domain(data.map(function(d) { return d.State; }));
+                    y.domain([0, M]).nice();
+                  }
+
+
+                  d3.select('#bar')
+                    .append('g')
+                    .attr("transform", "translate(50, 550)")
+                    .call(d3.axisBottom(x))
+                    .attr("x", 1000)
+                    .attr("y", 1000);
+
+                  d3.select('#bar')
+                    .append('g')
+                    .attr("transform", "translate(50, 50)")
+                    .call(d3.axisLeft(y).ticks(10, "s"))
+                   
+
+                  var newData = [];
+                  data.forEach(function(d){
+                        newData.push(d)
+                      });
+
+                  var stackGenerator = d3.stack()
+                      //.keys(data.columns.slice(1));
+                      .keys(['area']);        
+                  // Create a g element for each series/layer
+
+
+                  var color = [];
+                  if (channels == '1'){
+                        data.forEach(function(d){
+                        color.push(col(d.area))
+                      });
+                  }else{ color = data.map(function(d){ return col(d.State);});}
+    
+                  
+
+                  colour = {};
+                  abbr.forEach((key, i) => colour[key] = col(ar[i]));
+                  
+
+                  var g = d3.select('#bar')
+                    .selectAll('.series')
+                    .data(stackGenerator(newData))
+                    .enter().append('g')
+                    .classed('series', true);
+
+                    
+                  // For each series/layer create a rect element for each day
+                  g.selectAll('rect')
+                    .data(function(d) {
+                      return d;
+                    })
+                    .enter().append('rect')
+                    .attr("fill", function(d, i){
+                      var t2 = d.data.State;
+                      return colour[t2];})
+                    .attr("id", function(d) { return d.data.State; })
+                    .attr("x", function(d) { return (x(d.data.State)+ 60);})
+                    .attr("y", function(d) { return (y(d[1]) + 50);})
+                    
+                    .attr('width', 10)
+                    .attr('height', function(d){
+                        return y(d[0])-y(d[1])
+                    })
+                    .on('mouseover', function(d, i) {
+                      d3.selectAll('#STA')
+                        .select('#'+ d.data.State)
+                        .style("fill",'#00BFFF');
+                        
+                      d3.select(this)
+                        .style("fill",'#00BFFF'); 
+                    })
+                    .on('mouseout', function(d, i) {
+                      var t1 = d.data.State;
+                      d3.select('#STA').remove();  
+                      run();
+                      d3.select(this)
+                        .style("fill", colour[t1]);    
+               
+                    })
+                }else{
+                  if (channels =='1'){
+                    var M = d3.max(data, function(d) { return d.total; });
+                    var m = d3.min(data, function(d) { return d.total; });
+
+                    var col = d3.scaleLinear()
+                      .domain([m, M])
+                      .range(["#FFE4E1", "#C71585"])
+                      .interpolate(d3.interpolateHcl);
+
+                    x.domain(data.map(function(d) { return d.State; }));
+                    y.domain([0, M]).nice();
+                  }
+
+                  //var xAxis = d3.axisLeft(xScale);
+                  // var xAxis = d3.axisTop(xScale);
+                  // var xAxis = d3.axisLeft(xScale);
+                  // var xAxis = d3.axisRight(xScale);
+
+                    else if (channels == '3'){
+                    var M = d3.max(data, function(d) { return d.total; });
+                    var m = d3.min(data, function(d) { return d.total; });
+
+                    var t1 = d3.schemeCategory20;
+                    var t2 = d3.schemeCategory20b;
+                    var t3 = d3.schemeCategory20c;
+                    var colorScale = t1.concat(t2);
+                    colorScale = colorScale.concat(t3);
+
+                    var col = d3.scaleOrdinal()
+                      .domain(abbr)
+                      .range(colorScale);
+
+                    x.domain(data.map(function(d) { return d.State; }));
+                    y.domain([0, M]).nice();
+                  }
+                    else{
+                    var M = d3.max(data, function(d) { return d.total; });
+                    var m = d3.min(data, function(d) { return d.total; });
+
+                    function fillArray(value, len) {
+                      var arr = [];
+                      for (var i = 0; i < len; i++) {
+                        arr.push(value);
+                      }
+                      return arr;
+                    }
+                    var colorScale = fillArray('#00BFFF', 100);
+
+                    var col = d3.scaleOrdinal()
+                      .domain(abbr)
+                      .range(colorScale);
+
+                    x.domain(data.map(function(d) { return d.State; }));
+                    y.domain([0, M]).nice();
+                  }
+
+
+                  d3.select('#bar')
+                    .append('g')
+                    .attr("transform", "translate(50, 550)")
+                    .call(d3.axisBottom(x));
+
+                  d3.select('#bar')
+                    .append('g')
+                    .attr("transform", "translate(50, 50)")
+                    .call(d3.axisLeft(y).ticks(10, "s"))
+
+
+                  var newData = [];
+                  data.forEach(function(d){
+                        newData.push(d)
+                      });
+
+                  var stackGenerator = d3.stack()
+                      //.keys(data.columns.slice(1));
+                      .keys(['total']);        
+                                    
+
+                  var color = [];
+                  if (channels == '1'){
+                        data.forEach(function(d){
+                        color.push(col(d.area))
+                      });
+                  }else{ color = data.map(function(d){ return col(d.State);});}
+
+                  colour = {};
+                  abbr.forEach((key, i) => colour[key] = col(to[i]));
+
+                  var g = d3.select('#bar')
+                    .selectAll('.series')
+                    .data(stackGenerator(newData))
+                    .enter().append('g')
+                    .classed('series', true)
+
+                  // For each series/layer create a rect element for each day
+                  g.selectAll('rect')
+                    .data(function(d) {
+                      return d;
+                    })
+                    .enter().append('rect')
+                    .attr("fill", function(d, i){
+                      var t2 = d.data.State;
+                      return colour[t2];})
+                    .attr("id", function(d) { return d.data.State; })
+                    .attr("x", function(d) { return (x(d.data.State)+ 60);})
+                    .attr("y", function(d) { return (y(d[1]) + 50);})
+                    .attr('width', 10)
+                    .attr('height', function(d){
+                        return y(d[0])-y(d[1]);
+                    })
+                    .on('mouseover', function(d, i) {
+                      d3.selectAll('#STA')
+                        .select('#'+ d.data.State)
+                        .style("fill",'#00BFFF');
+                        
+                      d3.select(this)
+                        .style("fill",'#00BFFF'); 
+                    })
+                    .on('mouseout', function(d, i) {
+                      var t2 = d.data.State;
+                      d3.select('#STA').remove();  
+                      run();
+
+                      d3.select(this)
+                        .style("fill", colour[t2]);    
+               
+                    })
+                  }
+                  
+                  })
+
+                  function run(){
+                  d3.json("usa_mainland.json", drawUSA);  
+
+                  var filler = {};
+                  var usingStates = ['WA','CA', 'NY', 'TX', 'MI'];
+
+                  function drawUSA(error, states) {
+                    var centroid;
+                    var width = 800;
+                    var height = 800;
+
+                    var statesGroup = d3.select('#map')
+                      .append("g")
+                      .attr("id", "STA");
+
+                    var projection = d3.geoEquirectangular()
+                      .fitExtent([[0,0], [width, height]], states);
+                    
+                    var geoGenerator = d3.geoPath()
+                      .projection(projection);
+
+
+                    if (channels == '1' || channels == '3'){
+                      
+                      var paths = statesGroup
+                      .selectAll('path')
+                      .data(states.features)
+                      .enter()
+                      .append('path')
+                      .style('fill', function(d, i){ 
+                        var target = d.properties.STUSPS10;
+                        if(usingStates.includes(target)){
+                          filler[target] = colour[target];
+                        }
+                        return colour[target];})
+                      .attr("id", function(d) { return d.properties.STUSPS10; })
+                      .attr('d', geoGenerator)
+                      .on('mousedown', function(d, i) {
+                          d3.selectAll('g')
+                            .select('#'+ d.properties.STUSPS10)
+                            .style("fill",'green');
+                            
+                          d3.select(this)
+                            .style("fill",'green'); 
+                        })
+                      .on('mouseup', function(d, i) {
+                          var t3 = d.properties.STUSPS10;
+                          d3.selectAll('g')
+                            .select('#'+ d.properties.STUSPS10)
+                            .style("fill",colour[t3]);
+
+                          d3.select(this)
+                            .style("fill",colour[t3]);    
+                       
+                        });
+
+                    var texts = statesGroup
+                      .selectAll('text')
+                      .data(states.features)
+                      .enter()
+                      .append('text')
+                      .attr('text-anchor', 'middle')
+                      .attr('alignment-baseline', 'middle')
+                      .attr('opacity', 0.5)
+                      .text(function(d) {
+                        return d.properties.STUSPS10;
+                      })
+                      .attr('transform', function(d) {
+                        var center = geoGenerator.centroid(d);
+                        return 'translate (' + center + ')';
+                      });
+
+                    }
+                    else if( channels == '2' || channels == '5'){
+
+                      if(channels == '5'){
+                        function getRandom(min,max){
+                          var n = Math.floor(Math.random()*(max-min+1))+min;
+                          return init(n);
+                      };
+
+                        function init(n){
+                          var a = d3.selectAll('svg')
+                          var t = textures.lines()
+                            .size(4*n)
+                            .strokeWidth(1*n);
+                           a.call(t);
+                          return t.url();
+                      }
+                      }else{
+                        function getRandom(min,max){
+                          var n = Math.floor(Math.random()*(7-0+1))+0;
+                          return init(n);
+                      };
+
+                        function init(n){
+                          var a = d3.selectAll('svg')
+                          var t = textures.lines()
+                            .size(16)
+                            .strokeWidth(4)
+                            .orientation(Math.round(n) +'/8');
+
+                           a.call(t);
+                          return t.url();
+                      }
+                      }
+
+                      var paths = statesGroup
+                        .selectAll('path')
+                        .data(states.features)
+                        .enter()
+                        .append('path')
+                        .style('fill', function(d, i){
+                        var target = d.properties.STUSPS10;
+                        if(usingStates.includes(target)){
+                          filler[target] = getRandom(1, 10);
+                        }
+                         return getRandom(1, 10);})
+                        .attr("id", function(d) { return d.properties.STUSPS10; })
+                        .attr('d', geoGenerator)
+                        .on('mousedown', function(d, i) {
+                            d3.selectAll('g')
+                              .select('#'+ d.properties.STUSPS10)
+                              .style("fill",'green');                             
+                            d3.select(this)
+                              .style("fill",'green'); 
+                          })
+                        .on('mouseup', function(d, i) {
+                            var t3 = d.properties.STUSPS10;
+                            d3.selectAll('g')
+                              .select('#'+ d.properties.STUSPS10)
+                              .style("fill",colour[t3]);
+
+                            d3.select(this)
+                              .style("fill",colour[t3]);                             
+                          });
+
+                      var texts = statesGroup
+                        .selectAll('text')
+                        .data(states.features)
+                        .enter()
+                        .append('text')
+                        .attr('text-anchor', 'middle')
+                        .attr('alignment-baseline', 'middle')
+                        .attr('opacity', 0.5)
+                        .text(function(d) {
+                          return d.properties.STUSPS10;
+                        })
+                        .attr('transform', function(d) {
+                          var center = geoGenerator.centroid(d);
+                          return 'translate (' + center + ')';
+                        });
+                    }
+                    else if (channels == '0' || channels == '4'){
+
+                      var paths = statesGroup
+                        .selectAll('path')
+                        .data(states.features)
+                        .enter()
+                        .append('path')
+                        .attr("id", function(d) { return d.properties.STUSPS10; })
+                        .attr('d', geoGenerator)
+                        .on('mousedown', function(d, i) {
+                            d3.selectAll('g')
+                              .select('#'+ d.properties.STUSPS10)
+                              .style("fill",'green');                             
+                            d3.select(this)
+                              .style("fill",'green'); 
+                          })
+                        .on('mouseup', function(d, i) {
+                            var t3 = d.properties.STUSPS10;
+                            d3.selectAll('g')
+                              .select('#'+ d.properties.STUSPS10)
+                              .style("fill",colour[t3]);
+
+                            d3.select(this)
+                              .style("fill",colour[t3]);                             
+                          });
+
+
+                      var using;
+                      var data = states.features;
+                      var centroid = data.map(function(d) {return geoGenerator.centroid(d);});
+
+                      if (channels == '0') {
+                        if (value == '0') {using = ar;}
+                        else{using = to;}   
+                      length = {};
+                      abbr.forEach((key, i) => length[key] = using[i]);
+
+                      function transfer(num){
+                        var max = d3.max(using);
+                        return((num/max)*60)
+                      }
+
+
+                      var a = d3.select('svg').append('g').attr('id', 'legendary');
+                      var j = 0;
+                      for (i = 0; i < centroid.length; i++){
+                        var t1 = data[i];
+                        var t2 = t1.properties.STUSPS10;
+                        statesGroup
+                          .append('rect')
+                          .attr('id', t2)
+                          .attr('x', centroid[i][0]-10)
+                          .attr('y', centroid[i][1]-10)
+                          .attr('width', 20)
+                          .attr('height', transfer(length[t2]))
+                          .attr('fill', '#4B0082');
+                        
+                        if(usingStates.includes(t2)){
+                          a.append('rect')
+                            .attr('id', t2)
+                            .attr('width', 20)
+                            .attr('height', transfer(length[t2]))
+                            .attr('fill', '#4B0082')
+                            .attr('transform', 'translate('+ (0+j*80) +', 10)');
+                          a.append('text').attr('x', (0 + j*80)).attr('y', '100').attr('height', '80').attr('width', '80').text(t2).style("font-size", "25px").style('font-family', '"Open Sans", sans-serif');
+                          j+=1
+                        }
+                      }}
+                      else{
+                        var points = ["10,10 35,19 16,28", "10,1 4,19 19,7 1,7 16,19","22,1 30,21 17,25 12,23",'31,1 3,11 12,30 32,15']
+                        const makeRepeated = (arr, repeats) =>
+                        [].concat(...Array.from({ length: repeats }, () => arr));
+                        points = makeRepeated(points, 15)
+
+                      var b = d3.select('svg').append('g').attr('id', 'legendary');
+                      var j = 0;  
+                      for (i = 0; i < centroid.length; i++){
+                        var t1 = data[i];
+                        var t2 = t1.properties.STUSPS10;
+                        var a = d3.select('svg').append('g').attr('id', t2);
+                        var x = centroid[i][0]-15;
+                        var y = centroid[i][1]-10;
+                        a.append('polygon').attr('points', points[i])
+                          .style('fill', '#4B0082');
+                          a.attr('transform', 'translate('+ x +','+ y +')');
+
+                        if(usingStates.includes(t2)){
+                          console.log(j)
+                          b.append('polygon')
+                            .attr('id', t2)
+                            .attr('points', points[i])
+                            .style('fill', '#4B0082')
+                            .attr('transform', 'translate('+ (0+j*80) +', 10)');
+                          b.append('text').attr('x', (0 + j*80)).attr('y', '80').attr('height', '80').attr('width', '80').text(t2).style("font-size", "25px").style('font-family', '"Open Sans", sans-serif');
+                          j+=1
+                        }
+
+                        }
+                      }
+
+                  }
+
+                  var D;
+                  if(channels != '0' && channels != '4'){
+                    var i = 0;
+                    for(x of usingStates){
+                      D = filler[x];
+                      d3.select('#STA').append('rect').attr('x', (0 + i*80)).attr('y', '0').attr('height', '80').attr('width', '80').attr('fill', D).attr('id', x); 
+                      d3.select('#STA').append('text').attr('x', (0 + i*80)).attr('y', '105').attr('height', '80').attr('width', '80').text(x).style("font-size", "30px").style('font-family', '"Open Sans", sans-serif');
+                      i+=1;
+                    }
+                  }
+                  }; 
+
+
+
+                  }
+
+                  run();
+    
+
+
+                function type(d, i, columns) {
+                  for (i = 1, t = 0; i < columns.length - 1; ++i){
+                     t += d[columns[i]] =+ d[columns[i]];
+                     d.total = t; 
+                  }; 
+                  t1 = d[columns[8]].split(",").join("");
+                  d.area = Number(t1);
+                  return d;
+                };
+        }
+        </script>
+
+
+  </body>
+</html>
